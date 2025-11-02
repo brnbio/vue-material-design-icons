@@ -1,7 +1,10 @@
 {
   "name": "vue-material-design-icons",
-  "version": "4.0.0",
-  "author": "Rob Cresswell <robcresswell@pm.me>",
+  "version": "1.0.0",
+  "authors": [
+    "Rob Cresswell <robcresswell@pm.me>",
+    "Frank Heider <frank@brainbo.dev>"
+  ],
   "license": "MIT",
   "description": "A collection of material design icons as Vue 3 components with TypeScript support",
   "repository": "github:robcresswell/vue-material-design-icons",
