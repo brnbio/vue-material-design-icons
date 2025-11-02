@@ -1,0 +1,25 @@
+# Source files
+build.ts
+tsconfig.json
+.babelrc
+
+# Tests
+__tests__/
+*.test.js
+*.spec.js
+
+# Build artifacts
+*.tgz
+
+# Development
+.vscode/
+.idea/
+*.log
+.DS_Store
+
+# CI/CD
+.github/
+.circleci/
+.dependabot/
+
+# Note: Only dist/ will be published due to "files": ["dist"] in package.json
