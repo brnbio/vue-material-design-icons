@@ -254,7 +254,7 @@ ${templateData
 
   console.log(`\n🎉 Build complete! Generated ${iconIDs.length} icons.`);
   console.log('\nUsage:');
-  console.log('  import { Menu, Android } from "vue-material-design-icons";');
+  console.log('  import { Menu, Android } from "@brnbio/vue-material-design-icons";');
 }
 
 build().catch((err: unknown) => {

@@ -1,13 +1,13 @@
 {
-  "name": "vue-material-design-icons",
-  "version": "1.0.0",
+  "name": "@brnbio/vue-material-design-icons",
+  "version": "1.0.1",
   "authors": [
     "Rob Cresswell <robcresswell@pm.me>",
     "Frank Heider <frank@brainbo.dev>"
   ],
   "license": "MIT",
   "description": "A collection of material design icons as Vue 3 components with TypeScript support",
-  "repository": "github:robcresswell/vue-material-design-icons",
+  "repository": "github:brnbio/vue-material-design-icons",
   "keywords": [
     "vue",
     "vue3",
@@ -59,9 +59,9 @@
   "peerDependencies": {
     "vue": "^3.0.0"
   },
-  "homepage": "https://github.com/robcresswell/vue-material-design-icons",
+  "homepage": "https://github.com/brnbio/vue-material-design-icons",
   "bugs": {
-    "url": "https://github.com/robcresswell/vue-material-design-icons/issues"
+    "url": "https://github.com/brnbio/vue-material-design-icons/issues"
   },
   "scripts": {
     "prebuild": "rm -rf dist/",
