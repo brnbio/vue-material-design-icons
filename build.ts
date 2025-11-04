@@ -1,19 +1,23 @@
 #!/usr/bin/env -S node -r ts-node/register/transpile-only
 
-// Imports
-import { mkdir, writeFile, readFile } from 'fs/promises';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import pMap from 'p-map';
-import * as icons from '@mdi/js/commonjs/mdi.js';
-import { existsSync } from 'fs';
+import { existsSync } from "fs";
+import { mkdir, readFile, writeFile } from "fs/promises";
+import pMap from "p-map";
+import path from "path";
+import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const dist = path.resolve(__dirname, 'dist');
+const dist = path.resolve(__dirname, "dist");
 
-// JavaScript component using Vue 3 h() function
-function renderJavaScriptComponent(title: string, svgPathData: string, name: string) {
+function renderJavaScriptComponent(
+  title: string,
+  svgBody: string,
+  name: string,
+) {
+  const pathMatch = svgBody.match(/<path[^>]*\sd="([^"]*)"/);
+  const svgPathData = pathMatch ? pathMatch[1] : svgBody;
+
   return `import { h, defineComponent } from 'vue';
 
 /**
@@ -94,62 +98,73 @@ export const IconProps = {
 `;
 }
 
+function getTemplateData(id: string, iconData: { body: string }) {
+  let name = id
+    .split("-")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join("");
 
-function getTemplateData(id: string) {
-  const splitID = id.split(/(?=[A-Z])/).slice(1);
+  if (/^\d/.test(name)) {
+    name = "Icon" + name;
+  }
 
-  const name = splitID.join('');
-
-  // This is a hacky way to remove the 'mdi' prefix, so "mdiAndroid" becomes
-  // "android", for example
-  const title = splitID.join('-').toLowerCase();
+  const title = id;
 
   return {
     name,
     title,
-    svgPathData: icons[id],
+    svgBody: iconData.body,
   };
 }
 
 async function build() {
-  console.log('🔨 Building Material Design Icons for Vue 3...');
+  console.log("🔨 Building Material Symbols for Vue 3...");
 
-  // Filter out CommonJS metadata keys like __esModule, default, etc.
-  const iconIDs = Object.keys(icons).filter(
-    (key) => key.startsWith('mdi') && typeof icons[key] === 'string'
+  const iconsJsonPath = path.resolve(
+    __dirname,
+    "node_modules/@iconify-json/material-symbols/icons.json",
   );
-  console.log(`📦 Processing ${iconIDs.length} icons...`);
+  const iconsJsonContent = await readFile(iconsJsonPath, "utf-8");
+  const iconsData = JSON.parse(iconsJsonContent);
+
+  const iconIDs = Object.keys(iconsData.icons);
+  console.log(`📦 Processing ${iconIDs.length} icons from Material Symbols...`);
 
   if (!existsSync(dist)) {
     await mkdir(dist);
   }
 
-  // Read package.json files
-  const pkgJsonContent = await readFile(path.resolve(__dirname, 'package.json'), 'utf-8');
+  const pkgJsonContent = await readFile(
+    path.resolve(__dirname, "package.json"),
+    "utf-8",
+  );
   const pkgJson = JSON.parse(pkgJsonContent);
 
-  const mdiPkgJsonContent = await readFile(
-    path.resolve(__dirname, 'node_modules/@mdi/js/package.json'),
-    'utf-8'
+  const materialSymbolsPkgJsonContent = await readFile(
+    path.resolve(
+      __dirname,
+      "node_modules/@iconify-json/material-symbols/package.json",
+    ),
+    "utf-8",
   );
-  const mdiPkgJson = JSON.parse(mdiPkgJsonContent);
+  const materialSymbolsPkgJson = JSON.parse(materialSymbolsPkgJsonContent);
 
-  const templateData = iconIDs.map(getTemplateData);
+  const templateData = iconIDs.map((id) =>
+    getTemplateData(id, iconsData.icons[id]),
+  );
 
-  // Generate JavaScript components
   await pMap(
     templateData,
-    async ({ name, title, svgPathData }) => {
-      const component = renderJavaScriptComponent(title, svgPathData, name);
+    async ({ name, title, svgBody }) => {
+      const component = renderJavaScriptComponent(title, svgBody, name);
       const filename = `${name}.js`;
       return writeFile(path.resolve(dist, filename), component);
     },
     { concurrency: 20 },
   );
 
-  console.log('✅ Generated JavaScript components');
+  console.log("✅ Generated JavaScript components");
 
-  // Generate TypeScript definition files for each component
   await pMap(
     templateData,
     async ({ name }) => {
@@ -170,24 +185,27 @@ export default ${name};
     { concurrency: 20 },
   );
 
-  console.log('✅ Generated TypeScript declaration files');
+  console.log("✅ Generated TypeScript declaration files");
 
-  // Generate index.js with all named exports
+  const firstIcon = templateData[0];
+  if (!firstIcon) {
+    throw new Error("No icons found to generate");
+  }
+
   const indexContent = `// Auto-generated file - do not edit
-// Material Design Icons for Vue 3
-// @mdi/js version: ${mdiPkgJson.version}
+// Material Symbols for Vue 3
+// @iconify-json/material-symbols version: ${materialSymbolsPkgJson.version}
 
 ${templateData
   .map(({ name }) => `export { default as ${name} } from './${name}.js';`)
-  .join('\n')}
+  .join("\n")}
 
-export { IconProps } from './${templateData[0].name}.js';
+export { IconProps } from './${firstIcon.name}.js';
 `;
 
-  await writeFile(path.resolve(dist, 'index.js'), indexContent);
-  console.log('✅ Generated index.js with named exports');
+  await writeFile(path.resolve(dist, "index.js"), indexContent);
+  console.log("✅ Generated index.js with named exports");
 
-  // Generate index.d.ts for TypeScript definitions
   const dtsContent = `// Type definitions for vue-material-design-icons
 // Project: https://github.com/robcresswell/vue-material-design-icons
 // Definitions by: Rob Cresswell <https://github.com/robcresswell>
@@ -204,60 +222,60 @@ export type IconComponent = DefineComponent<IconProps, {}, any>;
 
 ${templateData
   .map(({ name }) => `export declare const ${name}: IconComponent;`)
-  .join('\n')}
+  .join("\n")}
 `;
 
-  await writeFile(path.resolve(dist, 'index.d.ts'), dtsContent);
-  console.log('✅ Generated TypeScript definitions');
+  await writeFile(path.resolve(dist, "index.d.ts"), dtsContent);
+  console.log("✅ Generated TypeScript definitions");
 
-  // Generate CommonJS version of index
   const cjsContent = `// Auto-generated CommonJS exports
 ${templateData
   .map(({ name }) => `exports.${name} = require('./${name}.js').default;`)
-  .join('\n')}
+  .join("\n")}
 `;
 
-  await writeFile(path.resolve(dist, 'index.cjs'), cjsContent);
-  console.log('✅ Generated CommonJS index');
+  await writeFile(path.resolve(dist, "index.cjs"), cjsContent);
+  console.log("✅ Generated CommonJS index");
 
-  // Generate package.json for dist
   const distPackageJson = {
-    name: 'vue-material-design-icons',
+    name: "vue-material-design-icons",
     version: pkgJson.version,
     description: pkgJson.description,
-    license: 'MIT',
+    license: "MIT",
     author: pkgJson.author,
     repository: pkgJson.repository,
-    type: 'module',
-    main: './index.js',
-    module: './index.js',
-    types: './index.d.ts',
+    type: "module",
+    main: "./index.js",
+    module: "./index.js",
+    types: "./index.d.ts",
     exports: {
-      '.': {
-        types: './index.d.ts',
-        import: './index.js',
-        require: './index.cjs',
+      ".": {
+        types: "./index.d.ts",
+        import: "./index.js",
+        require: "./index.cjs",
       },
-      './styles.css': './styles.css',
-      './*': {
-        types: './*.d.ts',
-        import: './*.js',
+      "./styles.css": "./styles.css",
+      "./*": {
+        types: "./*.d.ts",
+        import: "./*.js",
       },
     },
   };
 
   await writeFile(
-    path.resolve(dist, 'package.json'),
-    JSON.stringify(distPackageJson, null, 2)
+    path.resolve(dist, "package.json"),
+    JSON.stringify(distPackageJson, null, 2),
   );
-  console.log('✅ Generated dist package.json');
+  console.log("✅ Generated dist package.json");
 
   console.log(`\n🎉 Build complete! Generated ${iconIDs.length} icons.`);
-  console.log('\nUsage:');
-  console.log('  import { Menu, Android } from "@brnbio/vue-material-design-icons";');
+  console.log("\nUsage:");
+  console.log(
+    '  import { Menu, Android } from "@brnbio/vue-material-design-icons";',
+  );
 }
 
 build().catch((err: unknown) => {
-  console.error('❌ Build failed:', err);
+  console.error("❌ Build failed:", err);
   process.exit(1);
 });
